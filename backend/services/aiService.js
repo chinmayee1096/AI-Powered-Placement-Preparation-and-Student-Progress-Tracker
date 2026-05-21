@@ -3,22 +3,31 @@ import { aiConfig, getOpenAIClient } from "../config/ai.js";
 const systemPrompt =
   "You are an expert Indian campus placement coach. Return concise, practical JSON only, with no markdown fences.";
 
+const hasUsableApiKey = () => {
+  const key = process.env.OPENAI_API_KEY?.trim();
+  return key && key.startsWith("sk-") && !key.includes("your_") && !key.includes("optional");
+};
+
 const callJsonAI = async (prompt, fallback) => {
-  if (!process.env.OPENAI_API_KEY) return fallback;
+  if (!hasUsableApiKey()) return fallback;
   const openai = getOpenAIClient();
   if (!openai) return fallback;
 
-  const response = await openai.chat.completions.create({
-    model: aiConfig.model,
-    temperature: aiConfig.temperature,
-    response_format: { type: "json_object" },
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: prompt }
-    ]
-  });
+  try {
+    const response = await openai.chat.completions.create({
+      model: aiConfig.model,
+      temperature: aiConfig.temperature,
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: prompt }
+      ]
+    });
 
-  return JSON.parse(response.choices[0].message.content);
+    return JSON.parse(response.choices[0].message.content);
+  } catch (error) {
+    return fallback;
+  }
 };
 
 export const generateInterviewQuestions = async ({ type, targetRole, skills = [], weakTopics = [], resumeText = "" }) =>

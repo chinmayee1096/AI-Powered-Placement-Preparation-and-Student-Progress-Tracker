@@ -5,25 +5,42 @@ import Loader from "../components/Loader.jsx";
 
 export default function Profile() {
   const [profile, setProfile] = useState(null);
+  const [listFields, setListFields] = useState({ targetCompanies: "", skills: "", weakTopics: "" });
   const [resumeText, setResumeText] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get("/students/profile").then(({ data }) => setProfile(data.data)).finally(() => setLoading(false));
+    api.get("/students/profile")
+      .then(({ data }) => {
+        setProfile(data.data);
+        setListFields({
+          targetCompanies: (data.data.targetCompanies || []).join(", "),
+          skills: (data.data.skills || []).join(", "),
+          weakTopics: (data.data.weakTopics || []).join(", ")
+        });
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   const update = (event) => setProfile({ ...profile, [event.target.name]: event.target.value });
+  const updateListField = (event) => setListFields({ ...listFields, [event.target.name]: event.target.value });
+  const toList = (value) => value.split(",").map((item) => item.trim()).filter(Boolean);
 
   const save = async (event) => {
     event.preventDefault();
     const { data } = await api.put("/students/profile", {
       ...profile,
-      skills: String(profile.skills || "").split(",").map((item) => item.trim()).filter(Boolean),
-      weakTopics: String(profile.weakTopics || "").split(",").map((item) => item.trim()).filter(Boolean),
-      targetCompanies: String(profile.targetCompanies || "").split(",").map((item) => item.trim()).filter(Boolean)
+      skills: toList(listFields.skills),
+      weakTopics: toList(listFields.weakTopics),
+      targetCompanies: toList(listFields.targetCompanies)
     });
     setProfile(data.data);
+    setListFields({
+      targetCompanies: (data.data.targetCompanies || []).join(", "),
+      skills: (data.data.skills || []).join(", "),
+      weakTopics: (data.data.weakTopics || []).join(", ")
+    });
     setMessage("Profile saved.");
   };
 
@@ -44,9 +61,9 @@ export default function Profile() {
         <label>Semester<input name="semester" type="number" value={profile.semester || ""} onChange={update} /></label>
         <label>Target Role<input name="targetRole" value={profile.targetRole || ""} onChange={update} /></label>
         <label>Readiness Score<input disabled value={`${profile.readinessScore || 0}%`} /></label>
-        <label className="span-2">Target Companies<input name="targetCompanies" value={(profile.targetCompanies || []).join(", ")} onChange={update} /></label>
-        <label className="span-2">Skills<input name="skills" value={(profile.skills || []).join(", ")} onChange={update} /></label>
-        <label className="span-2">Weak Topics<input name="weakTopics" value={(profile.weakTopics || []).join(", ")} onChange={update} /></label>
+        <label className="span-2">Target Companies<input name="targetCompanies" value={listFields.targetCompanies} onChange={updateListField} placeholder="TCS, Infosys, Zoho" /></label>
+        <label className="span-2">Skills<input name="skills" value={listFields.skills} onChange={updateListField} placeholder="Python, React, MongoDB" /></label>
+        <label className="span-2">Weak Topics<input name="weakTopics" value={listFields.weakTopics} onChange={updateListField} placeholder="Aptitude, Dynamic Programming, Communication" /></label>
         <label>Resume Link<input name="resumeLink" value={profile.resumeLink || ""} onChange={update} /></label>
         <label>GitHub<input name="githubLink" value={profile.githubLink || ""} onChange={update} /></label>
         <label>LinkedIn<input name="linkedinLink" value={profile.linkedinLink || ""} onChange={update} /></label>
